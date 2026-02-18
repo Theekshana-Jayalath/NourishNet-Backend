@@ -1,22 +1,21 @@
-const express = require("express")
-const dotEnv = require("dotenv")
-const mogoose = require("mongoose")
+import express from "express";
+import dotenv from "dotenv";
+import connectDB from "./src/config/mongodb.js";
 
-const app = express()
-dotEnv.config()
+dotenv.config(); // load env first
 
-console.log("checking",process.env.MONGO_URI)
+const app = express();
 
-mogoose.connect(process.env.MONGO_URI)
-.then(()=>{
-    console.log("Database connected successfully")
-})
-.catch((error)=>{
-    console.log(error.message)
-})
+// Test route
+app.get("/", (req, res) => {
+  res.send("API Working 🚀");
+});
 
 const PORT = 3000;
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// Connect DB then start server
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
 });
