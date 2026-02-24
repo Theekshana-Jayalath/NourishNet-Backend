@@ -34,11 +34,15 @@ const donationFormSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    status:{
+        type: String,
+        enum: ["pending", "received", "rejected"],
+        default: "pending"
+    }
+    
 
 }, { timestamps: true })
 
+const DonationForm = mongoose.models.DonationForm || mongoose.model("DonationForm", donationFormSchema);
 
-
-
-
-export default mongoose.model("DonationForm", donationFormSchema)
+export default DonationForm;
