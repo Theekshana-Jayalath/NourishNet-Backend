@@ -1,22 +1,37 @@
-const express = require("express")
-const dotEnv = require("dotenv")
-const mogoose = require("mongoose")
+import express from "express";
+import dotenv from "dotenv";
+import bodyParser from "body-parser";
+import connectDB from "./src/config/mongodb.js";
+import donationRoute from "./src/routes/DonationFormRoute.js";
+import authRoutes from "./src/routes/authRoutes.js";
+import userRoutes from "./src/routes/userRoutes.js";
+import applicationRoutes from "./src/routes/applicationRoutes.js";
 
-const app = express()
-dotEnv.config()
 
-console.log("checking",process.env.MONGO_URI)
 
-mogoose.connect(process.env.MONGO_URI)
-.then(()=>{
-    console.log("Database connected successfully")
-})
-.catch((error)=>{
-    console.log(error.message)
-})
+dotenv.config();
 
-const PORT = 3000;
+const app = express();
+
+app.use(express.json());
+
+
+// routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/applications", applicationRoutes);
+app.use("/donationForms", donationRoute);
+
+// connect database
+connectDB();
+
+
+
+const PORT = process.env.PORT || 3000;
+
+
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
+
