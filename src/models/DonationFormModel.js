@@ -53,8 +53,9 @@ const donationFormSchema = new mongoose.Schema(
     },
     expirationDate: {
       type: Date,
-      required: true,
-    },
+      required: true
+    }
+  });
 
     // Storage type dropdown 
     StorageType: {
@@ -67,12 +68,11 @@ const donationFormSchema = new mongoose.Schema(
     Status: {
       type: String,
       default: "Pending",
-      enum: ["Pending", "Recived"],
+      enum: ["Pending", "Recived"]
     },
   },
   { timestamps: true }
 );
-
 
 const DonationForm = mongoose.models.DonationForm || mongoose.model("DonationForm", donationFormSchema);
 
