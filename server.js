@@ -1,22 +1,31 @@
-const express = require("express")
-const dotEnv = require("dotenv")
-const mogoose = require("mongoose")
+// server.js
 
-const app = express()
-dotEnv.config()
+import dotenv from "dotenv";
+import connectDB from "./src/config/mongodb.js";
+import app from "./src/index.js";  // Import 'app' from index.js
 
-console.log("checking",process.env.MONGO_URI)
+import donationRoute from "./src/routes/DonationFormRoute.js";  // Your donation route
+import authRoutes from "./src/routes/authRoutes.js";  // Your auth routes
+import userRoutes from "./src/routes/userRoutes.js";  // Your user routes
+import applicationRoutes from "./src/routes/applicationRoutes.js";  // Your application routes
+import deliveryRoutes from "./src/routes/delivery.routes.js";
 
-mogoose.connect(process.env.MONGO_URI)
-.then(()=>{
-    console.log("Database connected successfully")
-})
-.catch((error)=>{
-    console.log(error.message)
-})
 
-const PORT = 3000;
+dotenv.config();  // Load environment variables from .env
 
+// Connect to the database
+connectDB();
+
+// Add all your routes to the app
+app.use("/api/auth", authRoutes);  // Auth routes
+app.use("/api/users", userRoutes);  // User routes
+app.use("/api/applications", applicationRoutes);  // Application routes
+app.use("/donationForms", donationRoute);  // Donation routes
+app.use("/api/deliveries", deliveryRoutes);
+
+const PORT = process.env.PORT || 3000;
+
+// Start the server
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

@@ -50,13 +50,13 @@ const donationFormSchema = new mongoose.Schema(
         type: String,
         enum: ["pending", "received", "rejected"],
         default: "pending"
-    }
-    
+    },
 
     expirationDate: {
       type: Date,
-      required: true,
-    },
+      required: true
+    }
+  });
 
 const DonationForm = mongoose.models.DonationForm || mongoose.model("DonationForm", donationFormSchema);
 
