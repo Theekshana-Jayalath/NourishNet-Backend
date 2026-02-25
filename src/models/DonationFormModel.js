@@ -50,13 +50,29 @@ const donationFormSchema = new mongoose.Schema(
         type: String,
         enum: ["pending", "received", "rejected"],
         default: "pending"
-    }
-    
-
+    },
     expirationDate: {
       type: Date,
       required: true,
     },
+
+    // Storage type dropdown 
+    StorageType: {
+      type: String,
+      required: true,
+      enum: ["Room Temperature", "Refrigerated", "Frozen", "Cool Place"],
+    },
+
+    // Status dropdown  with default
+    Status: {
+      type: String,
+      default: "Pending",
+      enum: ["Pending", "Recived"],
+    },
+  },
+  { timestamps: true }
+);
+
 
 const DonationForm = mongoose.models.DonationForm || mongoose.model("DonationForm", donationFormSchema);
 
