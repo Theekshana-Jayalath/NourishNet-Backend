@@ -1,38 +1,50 @@
 import mongoose from "mongoose";
 
-const donationFormSchema = new mongoose.Schema({
+const donationFormSchema = new mongoose.Schema(
+  {
+    productId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-    productId:{
-        type: String,
-        required: true
+    productName: {
+      type: String,
+      required: true,
+      trim: true,
     },
-    productName:{
-        type: String,
-        required: true
+
+    // Food-only category dropdown
+    productCategory: {
+      type: String,
+      required: true,
+      enum: [
+        "Processed Food",
+        "Unprocessed Food",
+      ],
     },
-    productCategory:{
-        type: String,
-        required: true
+
+    // Food type dropdown (dietary type)
+    productType: {
+      type: String,
+      required: true,
+      enum: ["Vegetarian", "Non-Vegetarian", "Vegan", "Halal"],
+       required: function () {
+        return this.productCategory === "Processed Food";
+      },
     },
-    productType:{
-        type: String,
-        required: true
+
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
     },
-    quantity:{
-        type: Number,
-        required: true
-    },
-    unit:{
-        type: String,
-        required: true
-    },
-    expirationDate:{
-        type: Date,
-        required: true
-    },
-    StorageType:{
-        type: String,
-        required: true
+
+    // Unit dropdown (enum)
+    unit: {
+      type: String,
+      required: true,
+      enum: ["Kg", "g", "L", "ml", "Packets", "Pieces"],
     },
     status:{
         type: String,
@@ -41,7 +53,10 @@ const donationFormSchema = new mongoose.Schema({
     }
     
 
-}, { timestamps: true })
+    expirationDate: {
+      type: Date,
+      required: true,
+    },
 
 const DonationForm = mongoose.models.DonationForm || mongoose.model("DonationForm", donationFormSchema);
 
