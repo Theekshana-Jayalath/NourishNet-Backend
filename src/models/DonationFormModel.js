@@ -46,7 +46,11 @@ const donationFormSchema = new mongoose.Schema(
       required: true,
       enum: ["Kg", "g", "L", "ml", "Packets", "Pieces"],
     },
-
+    status:{
+        type: String,
+        enum: ["pending", "received", "rejected"],
+        default: "pending"
+    },
     expirationDate: {
       type: Date,
       required: true,
