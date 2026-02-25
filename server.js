@@ -1,22 +1,23 @@
-const express = require("express")
-const dotEnv = require("dotenv")
-const mogoose = require("mongoose")
+import express from "express";
+import dotenv from "dotenv";
+import connectDB from "./src/config/mongodb.js";
+import deliveryRoutes from "./src/routes/delivery.routes.js";
 
-const app = express()
-dotEnv.config()
+dotenv.config();
+const app = express();
+app.use(express.json());
 
-console.log("checking",process.env.MONGO_URI)
+// connect database
+connectDB();
 
-mogoose.connect(process.env.MONGO_URI)
-.then(()=>{
-    console.log("Database connected successfully")
-})
-.catch((error)=>{
-    console.log(error.message)
-})
+// routes
+app.use("/api/deliveries", deliveryRoutes);
 
-const PORT = 3000;
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// global error handler
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: err.message || "Server Error" });
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
