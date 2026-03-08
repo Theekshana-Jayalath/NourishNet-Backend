@@ -63,7 +63,7 @@ const donationFormSchema = new mongoose.Schema(
     Status: {
       type: String,
       default: "Pending",
-      enum: ["Pending", "Recived"],
+      enum: ["Pending", "Received"],
     },
   },
   { timestamps: true }
