@@ -91,6 +91,10 @@ export const update = async (req, res) => {
     if (req.body.donorId) delete req.body.donorId;
     if (req.body.donationFormId) delete req.body.donationFormId;
 
+    // Prevent changing donorId / donationFormId
+    if (req.body.donorId) delete req.body.donorId;
+    if (req.body.donationFormId) delete req.body.donationFormId;
+
     const updatedData = await DonationFormModel.findByIdAndUpdate(id, req.body, {
       new: true,
       runValidators: true,
