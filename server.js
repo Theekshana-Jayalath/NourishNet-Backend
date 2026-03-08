@@ -1,31 +1,27 @@
-// server.js
-
 import dotenv from "dotenv";
 import connectDB from "./src/config/mongodb.js";
-import app from "./src/index.js";  // Import 'app' from index.js
-
-import donationRoute from "./src/routes/DonationFormRoute.js";  // Your donation route
-import authRoutes from "./src/routes/authRoutes.js";  // Your auth routes
-import userRoutes from "./src/routes/userRoutes.js";  // Your user routes
-import applicationRoutes from "./src/routes/applicationRoutes.js";  // Your application routes
+import app from "./src/index.js";
+import donationRoute from "./src/routes/DonationFormRoute.js";
+import authRoutes from "./src/routes/authRoutes.js";
+import userRoutes from "./src/routes/userRoutes.js";
+import applicationRoutes from "./src/routes/applicationRoutes.js";
 import deliveryRoutes from "./src/routes/delivery.routes.js";
 
+dotenv.config();
 
-dotenv.config();  // Load environment variables from .env
-
-// Connect to the database
+// Connect DB
 connectDB();
 
-// Add all your routes to the app
-app.use("/api/auth", authRoutes);  // Auth routes
-app.use("/api/users", userRoutes);  // User routes
-app.use("/api/applications", applicationRoutes);  // Application routes
-app.use("/donationForms", donationRoute);  // Donation routes
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/applications", applicationRoutes);
 app.use("/api/deliveries", deliveryRoutes);
 
-const PORT = process.env.PORT || 3000;
+// Keep consistent /api prefix for donations too
+app.use("/api/donationForms", donationRoute);
 
-// Start the server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
