@@ -113,7 +113,6 @@ message:error.message
 };
 
 
-
 /*
 GET DISPLAY ITEMS
 Show only published items

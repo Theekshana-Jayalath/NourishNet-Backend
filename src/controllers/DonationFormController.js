@@ -8,8 +8,6 @@ This will update the stock when donation becomes "Received"
 */
 import { buildInventory } from "./displayController.js";
 
-
-
 //CREATE 
 export const create = async (req, res) => {
   try {
@@ -42,8 +40,6 @@ export const create = async (req, res) => {
   }
 };
 
-
-
 // GET ALL 
 export const getAllDonationForms = async (req, res) => {
   try {
@@ -57,8 +53,6 @@ export const getAllDonationForms = async (req, res) => {
     return res.status(500).json({ errorMessage: error.message });
   }
 };
-
-
 
 //GET BY ID 
 export const getDonationFormById = async (req, res) => {
@@ -84,8 +78,6 @@ export const getDonationFormById = async (req, res) => {
   }
 };
 
-
-
 // UPDATE
 export const update = async (req, res) => {
   try {
@@ -99,19 +91,19 @@ export const update = async (req, res) => {
     if (req.body.donorId) delete req.body.donorId;
     if (req.body.donationFormId) delete req.body.donationFormId;
 
-    const updatedData = await DonationFormModel.findByIdAndUpdate(
-      id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    // Prevent changing donorId / donationFormId
+    if (req.body.donorId) delete req.body.donorId;
+    if (req.body.donationFormId) delete req.body.donationFormId;
+
+    const updatedData = await DonationFormModel.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!updatedData) {
       return res.status(404).json({ message: "Donation form not found" });
     }
-
+    
 
     /*
     NEW INVENTORY PART
@@ -132,8 +124,6 @@ export const update = async (req, res) => {
     return res.status(500).json({ errorMessage: error.message });
   }
 };
-
-
 
 // DELETE
 export const deleteDonationForm = async (req, res) => {
@@ -158,8 +148,6 @@ export const deleteDonationForm = async (req, res) => {
     return res.status(500).json({ errorMessage: error.message });
   }
 };
-
-
 
 // DONATION HISTORY 
 // Call like: GET /api/donationForms/my-history?donorId=XXXXXXXX
