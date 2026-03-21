@@ -112,8 +112,8 @@ export const update = async (req, res) => {
     */
 
     if (updatedData.Status === "Received") {
-      await buildInventory(); 
-    }
+  await buildInventory({}, {}); 
+}
 
 
     return res.status(200).json({
