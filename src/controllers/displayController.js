@@ -1,181 +1,145 @@
 import Display from "../models/displayModel.js";
 import DonationForm from "../models/DonationFormModel.js";
 
-
 /*
 BUILD INVENTORY
-Calculate stock from received donations
 */
+export const buildInventory = async (req, res) => {
+  try {
+    const donations = await DonationForm.find({ Status: "Received" });
 
-export const buildInventory = async (req,res)=>{
+    const inventoryMap = {};
+    const today = new Date();
 
-try{
+    donations.forEach(form => {
+      form.items.forEach(item => {
 
-const donations = await DonationForm.find({Status:"Received"});
+        const key = item.productId + "_" + item.unit;
 
-const inventoryMap = {};
+        if (!inventoryMap[key]) {
+          inventoryMap[key] = {
+            productName: item.productId,
+            productCategory: item.processingType,
+            unit: item.unit,
+            totalQuantity: 0,
+            nearestExpireDate: item.expirationDate,
+            daysLeft: null,
+            isExpiringSoon: false
+          };
+        }
 
-donations.forEach(item=>{
+        // add quantity
+        inventoryMap[key].totalQuantity += item.quantity;
 
-const name = item.productName;
+        // check nearest expiry
+        if (
+          item.expirationDate &&
+          new Date(item.expirationDate) <
+            new Date(inventoryMap[key].nearestExpireDate)
+        ) {
+          inventoryMap[key].nearestExpireDate = item.expirationDate;
+        }
+      });
+    });
 
-if(!inventoryMap[name]){
+    // calculate daysLeft & isExpiringSoon AFTER loop
+    Object.values(inventoryMap).forEach(item => {
+      if (item.nearestExpireDate) {
+        const diff =
+          new Date(item.nearestExpireDate) - today;
 
-inventoryMap[name] = {
-productName:item.productName,
-productCategory:item.productCategory,
-unit:item.unit,
-totalQuantity:0,
-nearestExpireDate:item.expirationDate
-};
+        item.daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
 
-}
+        item.isExpiringSoon = item.daysLeft <= 3;
+      }
+    });
 
-inventoryMap[name].totalQuantity += item.quantity;
+    const inventoryArray = Object.values(inventoryMap);
 
-if(new Date(item.expirationDate) < new Date(inventoryMap[name].nearestExpireDate)){
+    await Display.deleteMany();
+    const savedItems = await Display.insertMany(inventoryArray);
 
-inventoryMap[name].nearestExpireDate = item.expirationDate;
+    res.status(200).json({
+      message: "Inventory built successfully",
+      data: savedItems
+    });
 
-}
-
-});
-
-const inventoryArray = Object.values(inventoryMap);
-
-await Display.deleteMany();
-
-const savedItems = await Display.insertMany(inventoryArray);
-
-res.status(200).json({
-message:"Inventory built successfully",
-data:savedItems
-});
-
-}
-catch(error){
-
-res.status(500).json({
-message:error.message
-});
-
-}
-
-};
-
-
-
-/*
-PUBLISH ITEM WITH IMAGE
-*/
-
-export const publishItem = async (req,res)=>{
-
-try{
-
-const {id} = req.params;
-
-const image = req.file?.filename;
-
-const updatedItem = await Display.findByIdAndUpdate(
-
-id,
-{
-image:image,
-published:true
-},
-{new:true}
-
-);
-
-if(!updatedItem){
-
-return res.status(404).json({
-message:"Item not found"
-});
-
-}
-
-res.status(200).json({
-message:"Item published successfully",
-data:updatedItem
-});
-
-}
-catch(error){
-
-res.status(500).json({
-message:error.message
-});
-
-}
-
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 
 /*
-GET DISPLAY ITEMS
-Show only published items
-Sort by expire date (quick expire first)
+PUBLISH ITEM
 */
+export const publishItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const image = req.file?.filename;
 
-export const getDisplayItems = async (req,res)=>{
+    const updatedItem = await Display.findByIdAndUpdate(
+      id,
+      {
+        image: image,
+        published: true
+      },
+      { new: true }
+    );
 
-try{
+    if (!updatedItem) {
+      return res.status(404).json({ message: "Item not found" });
+    }
 
-const items = await Display.find({published:true})
-.sort({nearestExpireDate:1});
+    res.status(200).json({
+      message: "Item published successfully",
+      data: updatedItem
+    });
 
-res.status(200).json({
-count:items.length,
-data:items
-});
-
-}
-catch(error){
-
-res.status(500).json({
-message:error.message
-});
-
-}
-
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 
+/*
+GET DISPLAY ITEMS (FINAL SORT)
+*/
+export const getDisplayItems = async (req, res) => {
+  try {
+    const items = await Display.find({ published: true })
+      .sort({ isExpiringSoon: -1, nearestExpireDate: 1 });
+
+    res.status(200).json({
+      count: items.length,
+      data: items
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 /*
-DELETE DISPLAY ITEM
+DELETE ITEM
 */
+export const deleteDisplayItem = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-export const deleteDisplayItem = async(req,res)=>{
+    const deleted = await Display.findByIdAndDelete(id);
 
-try{
+    if (!deleted) {
+      return res.status(404).json({ message: "Item not found" });
+    }
 
-const {id} = req.params;
+    res.status(200).json({
+      message: "Item deleted",
+      data: deleted
+    });
 
-const deleted = await Display.findByIdAndDelete(id);
-
-if(!deleted){
-
-return res.status(404).json({
-message:"Item not found"
-});
-
-}
-
-res.status(200).json({
-message:"Item deleted",
-data:deleted
-});
-
-}
-catch(error){
-
-res.status(500).json({
-message:error.message
-});
-
-}
-
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };

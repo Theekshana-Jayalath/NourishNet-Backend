@@ -2,42 +2,51 @@ import mongoose from "mongoose";
 
 const displaySchema = new mongoose.Schema(
 {
-  productName:{
-    type:String,
-    required:true,
-    trim:true
+  productName: {
+    type: String,
+    required: true,
+    trim: true
   },
 
-  productCategory:{
-    type:String,
-    required:true
+  productCategory: {
+    type: String,
+    required: true
   },
 
-  unit:{
-    type:String,
-    required:true
+  unit: {
+    type: String,
+    required: true
   },
 
-  totalQuantity:{
-    type:Number,
-    default:0
+  totalQuantity: {
+    type: Number,
+    default: 0
   },
 
-  nearestExpireDate:{
-    type:Date
+  nearestExpireDate: {
+    type: Date
   },
 
-  image:{
-    type:String
+  daysLeft: {
+    type: Number
   },
 
-  published:{
-    type:Boolean,
-    default:false
+  isExpiringSoon: {
+    type: Boolean,
+    default: false
+  },
+
+  image: {
+    type: String
+  },
+
+  published: {
+    type: Boolean,
+    default: false
   }
 
 },
-{timestamps:true}
+{ timestamps: true }
 );
 
 const Display = mongoose.model("Display", displaySchema);
