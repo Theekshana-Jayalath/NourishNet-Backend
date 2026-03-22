@@ -9,7 +9,7 @@ router.get("/admin", verifyToken, authorizeRoles("admin"), (req, res) => {
 });
 
 //both admin and manager can access this router
-router.get("/admin", verifyToken, authorizeRoles("admin", "manager"), (req, res) => {
+router.get("/manager", verifyToken, authorizeRoles("admin", "manager"), (req, res) => {
     res.json({ message : "Welcome Manager"});
 });
 
