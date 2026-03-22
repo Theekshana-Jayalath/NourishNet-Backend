@@ -33,7 +33,7 @@ const requestSchema = new mongoose.Schema(
       address: { type: String, required: true, trim: true }
     },
 
-    // ✅ REQUIRED: user must add at least 1 item
+    //  REQUIRED: user must add at least 1 item
     requestedItems: {
       type: [requestedItemSchema],
       required: true,
@@ -55,7 +55,7 @@ const requestSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ FIXED: Auto-generate requestId without using next() in async hook (Mongoose 7+)
+//  FIXED: Auto-generate requestId without using next() in async hook (Mongoose 7+)
 requestSchema.pre("save", async function () {
   if (this.requestId) return;
 

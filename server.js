@@ -9,6 +9,8 @@ import authRoutes from "./src/routes/authRoutes.js";  // Your auth routes
 import userRoutes from "./src/routes/userRoutes.js";  // Your user routes
 import applicationRoutes from "./src/routes/applicationRoutes.js";  // Your application routes
 import deliveryRoutes from "./src/routes/delivery.routes.js";
+import inventoryRoutes from "./src/routes/inventoryRoutes.js";
+import displayRoutes from "./src/routes/displayRoutes.js";
 
 
 dotenv.config();  // Load environment variables from .env
@@ -22,6 +24,8 @@ app.use("/api/users", userRoutes);  // User routes
 app.use("/api/applications", applicationRoutes);  // Application routes
 app.use("/donationForms", donationRoute);  // Donation routes
 app.use("/api/deliveries", deliveryRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/display", displayRoutes);
 
 const PORT = process.env.PORT || 3000;
 
