@@ -1,4 +1,3 @@
-// src/models/request/request.model.js
 import mongoose from "mongoose";
 import Counter from "./counter.model.js";
 
@@ -18,8 +17,8 @@ const requestSchema = new mongoose.Schema(
     // Auto-generated: RE0001, RE0002...
     requestId: { type: String, unique: true, index: true },
 
-    // optional for now (later from JWT)
-    ngoId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false, index: true },
+    // now required from logged-in NGO user
+    ngoId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
 
     organizationName: { type: String, required: true, trim: true },
     contactPhone: { type: String, required: true, trim: true },
@@ -33,7 +32,7 @@ const requestSchema = new mongoose.Schema(
       address: { type: String, required: true, trim: true }
     },
 
-    //  REQUIRED: user must add at least 1 item
+    // REQUIRED: user must add at least 1 item
     requestedItems: {
       type: [requestedItemSchema],
       required: true,
@@ -55,7 +54,7 @@ const requestSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-//  FIXED: Auto-generate requestId without using next() in async hook (Mongoose 7+)
+// FIXED: Auto-generate requestId without using next() in async hook (Mongoose 7+)
 requestSchema.pre("save", async function () {
   if (this.requestId) return;
 
