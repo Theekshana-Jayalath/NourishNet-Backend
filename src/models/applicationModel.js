@@ -14,22 +14,25 @@ const applicationSchema = new mongoose.Schema({
          type: String, 
          required: true
     },
+     // legacy field names — make optional and accept frontend equivalents
      contact: {
-         type: String, 
-         required: true
+         type: String,
+         required: false
      },
      nic: {
          type: String,
-          required: true
+         required: false
      },
      address: {
-         type: String, 
-         required: true
+         type: String,
+         required: false
      },
      city: {
-         type: String, 
-         required: true
+         type: String,
+         required: false
      },
+
+    // frontend field aliases
 
      role: {
         type: String,
@@ -37,8 +40,25 @@ const applicationSchema = new mongoose.Schema({
         required: true
     },
 
-    // DONOR FIELD
+    // optional credentials supplied by applicant
+    username: {
+        type: String,
+        required: false,
+        trim: true,
+        lowercase: true
+    },
+
+    password: {
+        type: String,
+        required: false
+    },
+
+    // DONOR FIELD (support both donorType and donationType keys)
     donorType: {
+        type: String,
+        required: false
+    },
+    donationType: {
         type: String,
         required: function () {
             return this.role === "donor";
@@ -48,32 +68,27 @@ const applicationSchema = new mongoose.Schema({
       // DRIVER FIELDS
     vehicleType: {
         type: String,
-        required: function () {
-            return this.role === "driver";
-        }
+        required: false
     },
 
     vehicleNumber: {
         type: String,
-        required: function () {
-            return this.role === "driver";
-        }
+        required: false
     },
 
     licenseNumber: {
         type: String,
-        required: function () {
-            return this.role === "driver";
-        }
+        required: false
     },
 
     // NGO FIELDS
     registrationNumber: {
         type: String,
-        required: function () {
-            return this.role === "ngo";
-        }
+        required: false
     },
+
+    // frontend organization name
+    organizationName: { type: String, required: false },
 
     members: {
         type: [
@@ -84,7 +99,9 @@ const applicationSchema = new mongoose.Schema({
         ],
         validate: {
             validator: function (arr) {
-                return this.role !== "ngo" || arr.length === 2;
+                if (this.role !== "ngo") return true
+                if (!Array.isArray(arr)) return false
+                return arr.length === 2;
             },
             message: "Exactly 2 members required for NGO"
         }
@@ -92,7 +109,8 @@ const applicationSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        default: "pending"
+        default: "pending",
+        enum: ["pending", "approved", "rejected"]
     },
 
     appliedAt: {

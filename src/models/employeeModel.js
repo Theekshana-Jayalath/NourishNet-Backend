@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import Counter from "./request/counter.model.js";
 
-const userSchema = new mongoose.Schema({
+const employeeSchema = new mongoose.Schema({
     userId: {
         type: String,
         unique: true
@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         enum: ["admin", "manager", "ngo" , "donor" , "driver"],
-        default: "admin"
+        default: "manager"
     },
     status: {
         type: String,
@@ -37,8 +37,8 @@ const userSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-// ✅ Auto-generate userId safely
-userSchema.pre("save", async function () {
+// Auto-generate userId safely for employees
+employeeSchema.pre("save", async function () {
   if (this.userId) return;
 
   const counter = await Counter.findOneAndUpdate(
@@ -51,6 +51,6 @@ userSchema.pre("save", async function () {
   this.userId = `UI${padded}`;
 });
 
-
-const User = mongoose.models.User || mongoose.model("User", userSchema);
-export default User;
+// Force collection name to 'employees'
+const Employee = mongoose.models.Employee || mongoose.model("Employee", employeeSchema, "employees");
+export default Employee;
