@@ -3,7 +3,23 @@ import Request from "../../models/request/request.model.js";
 // CREATE: POST /api/requests
 export const createRequest = async (req, res) => {
   try {
-    const created = await Request.create(req.body);
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized"
+      });
+    }
+
+    if (req.user.role !== "ngo") {
+      return res.status(403).json({
+        message: "Only NGO users can create requests"
+      });
+    }
+
+    const created = await Request.create({
+      ...req.body,
+      ngoId: req.user.id
+    });
+
     return res.status(201).json({
       message: "Request created successfully",
       data: created
