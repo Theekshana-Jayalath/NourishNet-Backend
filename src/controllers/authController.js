@@ -1,19 +1,24 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
+import Employee from "../models/employeeModel.js";
 
 //Register
 
 export const register = async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, password, role, name, email } = req.body;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Create user (also acts as employee record)
     const newUser = new User({
+      name: name || username,
+      email: email || '',
       username,
       password: hashedPassword,
-      role
+      role,
+      status: 'ACTIVE'
     });
 
     await newUser.save();
@@ -29,25 +34,86 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+  const { username, password, role } = req.body;
 
-    const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+  // debug: log login attempt (do NOT log password)
+  console.log('[auth] login attempt - username:', username, 'role:', role)
+  // lookup by username in users first, then employees
+  const query = { username }
+  console.log('[auth] login query:', query)
+  let account = await User.findOne(query);
+  let accountSource = 'user'
+  if (!account) {
+    // try employees collection (managers stored here)
+    account = await Employee.findOne(query);
+    accountSource = account ? 'employee' : 'user'
+  }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
+  console.log('[auth] lookup result:', !!account, account ? { id: account._id, role: account.role, source: accountSource } : null)
+  if (!account) {
+    // For admin logins avoid revealing existence — return generic invalid credentials
+    if (role && role.toString().toLowerCase() === 'admin') {
       return res.status(401).json({ message: "Invalid credentials" });
     }
+    return res.status(404).json({ message: "User not found" });
+  }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+  // Only allow login for active accounts (users or employees)
+  if ((account.status || '').toString().toUpperCase() !== 'ACTIVE') {
+    return res.status(403).json({ message: 'Account not active' });
+  }
 
-    res.status(200).json({ token });
+  let isMatch = await bcrypt.compare(password, account.password);
+  console.log('[auth] password match:', isMatch)
+
+  // If bcrypt compare failed, check for legacy plaintext password stored in DB
+  if (!isMatch) {
+    try {
+      if (typeof account.password === 'string' && account.password === password) {
+        // migrate: hash plaintext password and update DB
+        console.log('[auth] detected plaintext password in DB for account, migrating to bcrypt')
+        const newHash = await bcrypt.hash(password, 10)
+        // update the correct collection where the account was found
+        if (accountSource === 'employee') {
+          await Employee.findByIdAndUpdate(account._id, { password: newHash })
+        } else {
+          await User.findByIdAndUpdate(account._id, { password: newHash })
+        }
+        isMatch = true
+        console.log('[auth] migration complete')
+      }
+    } catch (migrateErr) {
+      console.error('[auth] migration error', migrateErr.message)
+    }
+  }
+
+  if (!isMatch) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  const normalizedRole = (account.role || '').toString().toLowerCase()
+  const token = jwt.sign(
+    { id: account._id, role: normalizedRole },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
+
+  // If this account is a manager (from either collection), attempt to read department
+  let department = null
+  if (normalizedRole === 'manager') {
+    try {
+      // if account came from employees, it already has department
+      if (accountSource === 'employee' && account.department) department = account.department
+      else {
+        const emp = await Employee.findOne({ username: account.username })
+        if (emp && emp.department) department = emp.department
+      }
+    } catch (empErr) {
+      console.error('[auth] could not read employee department', empErr.message)
+    }
+  }
+
+  res.status(200).json({ token, role: normalizedRole, userId: account._id, source: accountSource, department });
 
   } catch (error) {
     console.error(error);
