@@ -29,6 +29,11 @@ const employeeSchema = new mongoose.Schema({
         enum: ["admin", "manager", "ngo" , "donor" , "driver"],
         default: "manager"
     },
+    department: {
+        type: String,
+        enum: ['ngo', 'donor', 'driver'],
+        required: false
+    },
     status: {
         type: String,
         enum: ['ACTIVE','INACTIVE'],

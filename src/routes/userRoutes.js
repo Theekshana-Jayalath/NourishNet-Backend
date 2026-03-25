@@ -30,10 +30,18 @@ router.post("/", verifyToken, authorizeRoles("admin"), async (req, res) => {
 
         const hashed = await bcrypt.hash(password, 10);
         if (role && role.toString().toLowerCase() === 'manager') {
-            const newEmp = new Employee({ name: name || username, email: email || '', username, password: hashed, role: 'manager', status: 'ACTIVE' });
+            // map frontend managerType to employee.department
+            const managerType = (req.body.managerType || '').toString().toUpperCase()
+            let department = null
+            if (managerType.includes('NGO')) department = 'ngo'
+            else if (managerType.includes('DRIVER')) department = 'driver'
+            else if (managerType.includes('DONOR')) department = 'donor'
+
+            const newEmp = new Employee({ name: name || username, email: email || '', username, password: hashed, role: 'manager', status: 'ACTIVE', department });
             await newEmp.save();
             console.log('[userRoutes] created employee id:', newEmp._id.toString())
-            return res.status(201).json({ user: { id: newEmp._id, name: newEmp.name, email: newEmp.email, username: newEmp.username, role: newEmp.role, status: newEmp.status, source: 'employee' } });
+            const resp = { id: newEmp._id, name: newEmp.name, email: newEmp.email, username: newEmp.username, role: newEmp.role, status: newEmp.status, source: 'employee', managerType: department ? (department.toUpperCase() + '_MANAGER') : null }
+            return res.status(201).json({ user: resp });
         }
 
         const newUser = new User({ name: name || username, email: email || '', username, password: hashed, role: role || 'manager', status: 'ACTIVE' });
@@ -56,7 +64,13 @@ router.get("/", verifyToken, authorizeRoles("admin"), async (req, res) => {
             const r = role.toString().toLowerCase()
             if (r === 'manager') {
                 const emps = await Employee.find().sort({ createdAt: -1 });
-                return res.status(200).json(emps);
+                // include managerType for compatibility with frontend
+                const mapped = emps.map(e => {
+                    const obj = e.toObject()
+                    obj.managerType = e.department ? (e.department.toUpperCase() + '_MANAGER') : null
+                    return obj
+                })
+                return res.status(200).json(mapped);
             }
             // return users filtered by role
             const filtered = await User.find({ role: r }).sort({ createdAt: -1 });
@@ -83,6 +97,14 @@ router.put("/:id", verifyToken, authorizeRoles("admin"), async (req, res) => {
         if (update.password) {
             update.password = await bcrypt.hash(update.password, 10);
         }
+
+    // map managerType to department if present in update
+    if (update.managerType) {
+        const mt = update.managerType.toString().toUpperCase()
+        if (mt.includes('NGO')) update.department = 'ngo'
+        else if (mt.includes('DRIVER')) update.department = 'driver'
+        else if (mt.includes('DONOR')) update.department = 'donor'
+    }
 
     // try updating in both collections
     let updated = await User.findByIdAndUpdate(id, update, { new: true });

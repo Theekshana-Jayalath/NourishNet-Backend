@@ -60,8 +60,9 @@ const applicationSchema = new mongoose.Schema({
     },
     donationType: {
         type: String,
+        // frontend may send `donorType`; only require `donationType` when role is donor AND donorType wasn't provided
         required: function () {
-            return this.role === "donor";
+            return this.role === "donor" && !this.donorType;
         }
     },
 
@@ -99,11 +100,13 @@ const applicationSchema = new mongoose.Schema({
         ],
         validate: {
             validator: function (arr) {
-                if (this.role !== "ngo") return true
-                if (!Array.isArray(arr)) return false
-                return arr.length === 2;
+                if (this.role !== "ngo") return true;
+                // members are optional for NGOs; if provided, ensure it's an array of at least one member
+                if (arr === undefined || arr === null) return true;
+                if (!Array.isArray(arr)) return false;
+                return arr.length >= 1;
             },
-            message: "Exactly 2 members required for NGO"
+            message: "Members must be an array of member objects when provided"
         }
     },
 
