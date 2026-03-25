@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
+import Counter from "./request/counter.model.js";
 
 const applicationSchema = new mongoose.Schema({
+     applicationId: {
+         type: String,
+         unique: true
+     },
      name: { 
         type: String, 
         required: true 
@@ -94,6 +99,21 @@ const applicationSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
-})
+}, { timestamps: true });
 
-export default mongoose.model("Application", applicationSchema);
+// ✅ Auto-generate applicationId safely
+applicationSchema.pre("save", async function () {
+  if (this.applicationId) return;
+
+  const counter = await Counter.findOneAndUpdate(
+    { name: "application" },
+    { $inc: { seq: 1 } },
+    { returnDocument: "after", upsert: true }
+  );
+
+  const padded = String(counter.seq).padStart(4, "0");
+  this.applicationId = `AI${padded}`;
+});
+
+const Application = mongoose.models.Application || mongoose.model("Application", applicationSchema);
+export default Application;
