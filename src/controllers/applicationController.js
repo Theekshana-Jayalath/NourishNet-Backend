@@ -45,13 +45,12 @@ export const createApplication = async (req, res) => {
 
         const applicationData = new Application({ ...req.body, password: hashed, username, status: 'pending' });
 
-    const savedApplication = await applicationData.save();
-    console.log('[applications] saved application id:', savedApplication._id)
-    return res.status(201).json({ savedApplication });
+        const savedApplication = await applicationData.save();
+        console.log('[applications] saved application id:', savedApplication._id)
+        return res.status(201).json({ savedApplication });
 
     }catch(error){
         console.error('[applications] create error', error)
-        // if mongoose validation error report details
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors).map(e => e.message)
             return res.status(400).json({ message: 'Validation failed', errors: messages })
@@ -107,7 +106,6 @@ export const updateApplication = async (req, res) => {
                 let plainPassword = null
                 let passwordHash
                 if (applicationExist.password) {
-                    // application.password is already hashed by createApplication
                     passwordHash = applicationExist.password
                 } else {
                     plainPassword = Math.random().toString(36).slice(-10)
@@ -120,12 +118,24 @@ export const updateApplication = async (req, res) => {
                     username,
                     password: passwordHash,
                     role: applicationExist.role,
-                    status: 'ACTIVE'
+                    status: 'ACTIVE',
+
+                    // ✅ Added missing profile fields
+                    nic: applicationExist.nic,
+                    address: applicationExist.address,
+                    city: applicationExist.city,
+                    organizationName: applicationExist.organizationName,
+                    registrationNumber: applicationExist.registrationNumber,
+                    contact: applicationExist.contact
                 })
 
                 await user.save({ session })
 
-                const updatedApplication = await Application.findByIdAndUpdate(id, { ...req.body, status: 'approved' }, { new: true, session })
+                const updatedApplication = await Application.findByIdAndUpdate(
+                    id,
+                    { ...req.body, status: 'approved' },
+                    { new: true, session }
+                )
 
                 await session.commitTransaction()
                 session.endSession()
@@ -173,7 +183,10 @@ export const approveApplication = async (req, res) => {
         if (!application) return res.status(404).json({ message: 'Application not found' });
 
         // build username (prefer supplied)
-        const username = (application.username || (application.email || '').split('@')[0] || application.name || 'user').toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        const username = (application.username || (application.email || '').split('@')[0] || application.name || 'user')
+            .toString()
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .toLowerCase();
 
         // prepare password hash: reuse if stored, otherwise generate
         let passwordHash = application.password;
@@ -188,13 +201,19 @@ export const approveApplication = async (req, res) => {
             username,
             password: passwordHash,
             role: application.role,
-            status: 'ACTIVE'
+            status: 'ACTIVE',
+
+            // ✅ Added missing profile fields
+            nic: application.nic,
+            address: application.address,
+            city: application.city,
+            organizationName: application.organizationName,
+            registrationNumber: application.registrationNumber,
+            contact: application.contact
         };
 
-        // insert into users collection
         await User.create(userPayload);
 
-        // delete application
         await Application.findByIdAndDelete(id);
 
         return res.status(200).json({ message: 'Application approved and user created', username });
