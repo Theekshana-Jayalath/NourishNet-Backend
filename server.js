@@ -1,3 +1,4 @@
+
 // server.js
 import dotenv from "dotenv";
 import connectDB from "./src/config/mongodb.js";
@@ -12,8 +13,10 @@ import deliveryRoutes from "./src/routes/delivery.routes.js";
 
 dotenv.config();  // Load environment variables from .env
 
+
 // Connect to the database
 connectDB();
+
 
 // Add all your routes to the app
 app.use("/api/auth", authRoutes);  // Auth routes
@@ -28,3 +31,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
