@@ -77,14 +77,12 @@ export const login = async (req, res) => {
     );
 
     if (!account) {
-      // For admin logins avoid revealing existence — return generic invalid credentials
       if (role && role.toString().toLowerCase() === "admin") {
         return res.status(401).json({ message: "Invalid credentials" });
       }
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Only allow login for active accounts (users or employees)
     if ((account.status || "").toString().toUpperCase() !== "ACTIVE") {
       return res.status(403).json({ message: "Account not active" });
     }
@@ -92,15 +90,12 @@ export const login = async (req, res) => {
     let isMatch = await bcrypt.compare(password, account.password);
     console.log("[auth] password match:", isMatch);
 
-    // If bcrypt compare failed, check for legacy plaintext password stored in DB
     if (!isMatch) {
       try {
         if (typeof account.password === "string" && account.password === password) {
-          // migrate: hash plaintext password and update DB
           console.log("[auth] detected plaintext password in DB for account, migrating to bcrypt");
           const newHash = await bcrypt.hash(password, 10);
 
-          // update the correct collection where the account was found
           if (accountSource === "employee") {
             await Employee.findByIdAndUpdate(account._id, { password: newHash });
           } else {
@@ -120,17 +115,11 @@ export const login = async (req, res) => {
     }
 
     const normalizedRole = (account.role || "").toString().toLowerCase();
-    const token = jwt.sign(
-      { id: account._id, role: normalizedRole },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
 
-    // If this account is a manager (from either collection), attempt to read department
-    let department = null;
+    // If this account is a manager, try to read department
+    let department = "";
     if (normalizedRole === "manager") {
       try {
-        // if account came from employees, it already has department
         if (accountSource === "employee" && account.department) {
           department = account.department;
         } else {
@@ -142,13 +131,24 @@ export const login = async (req, res) => {
       }
     }
 
-    // Added full user object without changing your existing response fields
+    const normalizedDepartment = (department || "").toString().toLowerCase();
+
+    const token = jwt.sign(
+      {
+        id: account._id,
+        role: normalizedRole,
+        department: normalizedDepartment
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
     res.status(200).json({
       token,
       role: normalizedRole,
       userId: account._id,
       source: accountSource,
-      department,
+      department: normalizedDepartment,
       user: {
         _id: account._id,
         userId: account.userId || "",
@@ -156,6 +156,7 @@ export const login = async (req, res) => {
         username: account.username || "",
         email: account.email || "",
         role: normalizedRole,
+        department: normalizedDepartment,
         nic: account.nic || "",
         address: account.address || "",
         city: account.city || "",
