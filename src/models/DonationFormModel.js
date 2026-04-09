@@ -40,9 +40,18 @@ const itemSchema = new mongoose.Schema(
       required: true,
       enum: ["Kg", "g", "L", "ml", "Packets", "Pieces"],
     },
+    status:{
+        type: String,
+        enum: ["pending", "received", "rejected"],
+        default: "pending"
+    },
+    expirationDate: {
+      type: Date,
+      required: true
+    }
+  });
 
-    expirationDate: { type: Date },
-
+    // Storage type dropdown 
     StorageType: {
       type: String,
       required: true,
@@ -86,11 +95,12 @@ const donationFormSchema = new mongoose.Schema(
     Status: {
       type: String,
       default: "Pending",
-      enum: ["Pending", "Received"],
+      enum: ["Pending", "Recived"]
     },
   },
   { timestamps: true, strict: "throw" }
 );
+
 
 // Validation: productId must match correct list based on processingType
 donationFormSchema.pre("validate", function () {

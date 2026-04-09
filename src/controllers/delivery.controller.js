@@ -1,12 +1,14 @@
 import { body, param, query, validationResult } from "express-validator";
 import deliveryService from "../services/delivery.service.js";
 
+// Validation middleware, This function checks whether validation errors exist after the validators run. 
 function handleValidation(req, res, next) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   next();
 }
 
+// Validation rules for different endpoints
 const validators = {
   create: [
     body("deliverType").isIn(["pickup", "drop"]).withMessage("deliverType must be 'pickup' or 'drop'"),
@@ -53,6 +55,7 @@ const validators = {
 };
 
 // Controllers
+//create a new delivery
 async function createDelivery(req, res, next) {
   try {
     const autoAssign = req.query.autoAssign === "true";
@@ -63,6 +66,7 @@ async function createDelivery(req, res, next) {
   }
 }
 
+//return a list of deliveries
 async function listDeliveries(req, res, next) {
   try {
     const data = await deliveryService.listDeliveries(req.query);
@@ -72,6 +76,7 @@ async function listDeliveries(req, res, next) {
   }
 }
 
+//return a single delivery by id
 async function getDelivery(req, res, next) {
   try {
     const delivery = await deliveryService.getDeliveryById(req.params.id);
@@ -81,6 +86,7 @@ async function getDelivery(req, res, next) {
   }
 }
 
+//assign a driver to a delivery
 async function assignDriver(req, res, next) {
   try {
     const updated = await deliveryService.assignDriver(req.params.id, req.body.driverId);
@@ -90,6 +96,7 @@ async function assignDriver(req, res, next) {
   }
 }
 
+//update the status of a delivery
 async function updateStatus(req, res, next) {
   try {
     const updated = await deliveryService.updateStatus(req.params.id, req.body.status, req.body.message);
@@ -99,6 +106,7 @@ async function updateStatus(req, res, next) {
   }
 }
 
+//update delivery details (like items, addresses, etc.) - only allowed if not yet assigned or in transit
 async function updateDelivery(req, res, next) {
   try {
     const updated = await deliveryService.updateDelivery(req.params.id, req.body);
@@ -108,6 +116,7 @@ async function updateDelivery(req, res, next) {
   }
 }
 
+//cancel a delivery - only allowed if not yet assigned or in transit
 async function cancelDelivery(req, res, next) {
   try {
     const updated = await deliveryService.cancelDelivery(req.params.id, req.body.reason);
@@ -117,6 +126,7 @@ async function cancelDelivery(req, res, next) {
   }
 }
 
+//delete a delivery - only allowed if not yet assigned
 async function deleteDelivery(req, res, next) {
   try {
     const result = await deliveryService.deleteDelivery(req.params.id);
@@ -126,6 +136,7 @@ async function deleteDelivery(req, res, next) {
   }
 }
 
+//exporting all validators and controllers as an object for easy import in routes
 export default {
   validators,
   handleValidation,
