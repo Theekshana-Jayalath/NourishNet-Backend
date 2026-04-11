@@ -1,3 +1,4 @@
+
 // server.js
 import dotenv from "dotenv";
 import connectDB from "./src/config/mongodb.js";
@@ -12,10 +13,13 @@ import ngoManagerRoutes from "./src/routes/ngoManagerRoutes.js";
 
 dotenv.config(); // Load environment variables from .env
 
+
 // Connect to the database
 connectDB();
 
+
 // Add all your routes to the app
+
 app.use("/api/auth", authRoutes); // Auth routes
 app.use("/api/users", userRoutes); // User routes
 app.use("/api/applications", applicationRoutes); // Application routes
@@ -29,3 +33,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
