@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import Counter from "./request/counter.model.js"; // ✅ ensure this path exists
 
-// Fixed dropdown lists (IDs only)
+// Fixed dropdown lists
 export const UNPROCESSED_PRODUCTS = [
   { productId: "UNP001", label: "Rice" },
   { productId: "UNP002", label: "Dhal" },
@@ -19,13 +19,20 @@ export const PROCESSED_PRODUCTS = [
   { productId: "PRO005", label: "Dhal Curry (Cooked)" },
 ];
 
+const ALL_PRODUCTS = [...UNPROCESSED_PRODUCTS, ...PROCESSED_PRODUCTS];
+
 const UNPROCESSED_IDS = UNPROCESSED_PRODUCTS.map((p) => p.productId);
 const PROCESSED_IDS = PROCESSED_PRODUCTS.map((p) => p.productId);
 
-// Item schema (one product line)
+// Item schema
 const itemSchema = new mongoose.Schema(
   {
     productId: { type: String, required: true, trim: true },
+
+    productName: {
+      type: String,
+      trim: true,
+    },
 
     processingType: {
       type: String,
@@ -50,7 +57,7 @@ const itemSchema = new mongoose.Schema(
     },
   },
   {
-    _id: true, // MongoDB auto item _id
+    _id: true,
     strict: "throw",
   }
 );
@@ -58,7 +65,6 @@ const itemSchema = new mongoose.Schema(
 // Donation Form schema
 const donationFormSchema = new mongoose.Schema(
   {
-    // Human-friendly form id (DF0001...)
     donationFormId: {
       type: String,
       unique: true,
@@ -66,7 +72,6 @@ const donationFormSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // The user who created it (donor userId)
     donorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -92,7 +97,7 @@ const donationFormSchema = new mongoose.Schema(
   { timestamps: true, strict: "throw" }
 );
 
-// Validation: productId must match correct list based on processingType
+// Validate and set productName
 donationFormSchema.pre("validate", function () {
   if (!this.items || this.items.length === 0) {
     throw new Error("Add at least one product item.");
@@ -110,11 +115,20 @@ donationFormSchema.pre("validate", function () {
         throw new Error("Invalid processed productId selected.");
       }
     }
+
+    const matchedProduct = ALL_PRODUCTS.find(
+      (p) => p.productId === item.productId
+    );
+
+    if (!matchedProduct) {
+      throw new Error(`Product name not found for productId: ${item.productId}`);
+    }
+
+    item.productName = matchedProduct.label;
   }
 });
 
-
-// Auto-generate donationFormId (DF0001, DF0002...)
+// Auto-generate donationFormId
 donationFormSchema.pre("save", async function () {
   if (this.donationFormId) return;
 
