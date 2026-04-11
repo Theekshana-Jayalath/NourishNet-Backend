@@ -1,14 +1,8 @@
 import mongoose from "mongoose";
 import DonationFormModel from "../models/DonationFormModel.js";
-
-/*
-NEW PART
-Import inventory builder
-This will update the stock when donation becomes "Received"
-*/
 import { buildInventory } from "./displayController.js";
 
-//CREATE 
+// CREATE
 export const create = async (req, res) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -32,15 +26,18 @@ export const create = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: "Donation form created",
+      message: "Donation form created successfully",
       data: newDonationForm,
     });
   } catch (error) {
-    return res.status(500).json({ errorMessage: error.message });
+    return res.status(500).json({
+      message: "Failed to create donation form",
+      errorMessage: error.message,
+    });
   }
 };
 
-// GET ALL 
+// GET ALL
 export const getAllDonationForms = async (req, res) => {
   try {
     const donationForms = await DonationFormModel.find().sort({ createdAt: -1 });
@@ -50,11 +47,14 @@ export const getAllDonationForms = async (req, res) => {
       data: donationForms,
     });
   } catch (error) {
-    return res.status(500).json({ errorMessage: error.message });
+    return res.status(500).json({
+      message: "Failed to fetch donation forms",
+      errorMessage: error.message,
+    });
   }
 };
 
-//GET BY ID 
+// GET BY ID
 export const getDonationFormById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -74,7 +74,10 @@ export const getDonationFormById = async (req, res) => {
       data: donationForm,
     });
   } catch (error) {
-    return res.status(500).json({ errorMessage: error.message });
+    return res.status(500).json({
+      message: "Failed to fetch donation form",
+      errorMessage: error.message,
+    });
   }
 };
 
@@ -91,37 +94,33 @@ export const update = async (req, res) => {
     if (req.body.donorId) delete req.body.donorId;
     if (req.body.donationFormId) delete req.body.donationFormId;
 
-    // Prevent changing donorId / donationFormId
-    if (req.body.donorId) delete req.body.donorId;
-    if (req.body.donationFormId) delete req.body.donationFormId;
+    const existingDonation = await DonationFormModel.findById(id);
+
+    if (!existingDonation) {
+      return res.status(404).json({ message: "Donation form not found" });
+    }
+
+    const oldStatus = existingDonation.Status;
 
     const updatedData = await DonationFormModel.findByIdAndUpdate(id, req.body, {
       new: true,
       runValidators: true,
     });
 
-    if (!updatedData) {
-      return res.status(404).json({ message: "Donation form not found" });
+    // Rebuild inventory only when status changes to Received
+    if (oldStatus !== "Received" && updatedData.Status === "Received") {
+      await buildInventory();
     }
-    
-
-    /*
-    NEW INVENTORY PART
-    If donation status becomes "Received",
-    rebuild inventory stock automatically
-    */
-
-    if (updatedData.Status === "Received") {
-        await buildInventory();
-    }
-
 
     return res.status(200).json({
       message: "Donation form updated successfully",
       data: updatedData,
     });
   } catch (error) {
-    return res.status(500).json({ errorMessage: error.message });
+    return res.status(500).json({
+      message: "Failed to update donation form",
+      errorMessage: error.message,
+    });
   }
 };
 
@@ -145,21 +144,29 @@ export const deleteDonationForm = async (req, res) => {
       data: donationForm,
     });
   } catch (error) {
-    return res.status(500).json({ errorMessage: error.message });
+    return res.status(500).json({
+      message: "Failed to delete donation form",
+      errorMessage: error.message,
+    });
   }
 };
 
-// DONATION HISTORY 
-// Call like: GET /api/donationForms/my-history?donorId=XXXXXXXX
+// DONATION HISTORY - RECEIVED ONLY
+// GET /api/donationForms/my-history
 export const getMyDonationHistory = async (req, res) => {
   try {
-    const donorId = req.user.id;
+    const donorId = req.user?.id || req.user?._id;
 
     if (!donorId) {
-      return res.status(400).json({ message: "donorId query param is required" });
+      return res.status(400).json({
+        message: "Authenticated donor ID not found",
+      });
     }
 
-    const forms = await DonationFormModel.find({ donorId }).sort({
+    const forms = await DonationFormModel.find({
+      donorId,
+      Status: "Received",
+    }).sort({
       createdAt: -1,
     });
 
@@ -168,6 +175,40 @@ export const getMyDonationHistory = async (req, res) => {
       data: forms,
     });
   } catch (error) {
-    return res.status(500).json({ errorMessage: error.message });
+    return res.status(500).json({
+      message: "Failed to fetch donation history",
+      errorMessage: error.message,
+    });
+  }
+};
+
+// PENDING DONATIONS - PENDING ONLY
+// GET /api/donationForms/my-pending
+export const getMyPendingDonations = async (req, res) => {
+  try {
+    const donorId = req.user?.id || req.user?._id;
+
+    if (!donorId) {
+      return res.status(400).json({
+        message: "Authenticated donor ID not found",
+      });
+    }
+
+    const forms = await DonationFormModel.find({
+      donorId,
+      Status: "Pending",
+    }).sort({
+      createdAt: -1,
+    });
+
+    return res.status(200).json({
+      count: forms.length,
+      data: forms,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to fetch pending donations",
+      errorMessage: error.message,
+    });
   }
 };
