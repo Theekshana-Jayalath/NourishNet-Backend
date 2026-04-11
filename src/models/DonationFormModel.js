@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Counter from "./request/counter.model.js"; 
+import Counter from "./request/counter.model.js";
 
 // Fixed dropdown lists
 export const UNPROCESSED_PRODUCTS = [
@@ -27,7 +27,11 @@ const PROCESSED_IDS = PROCESSED_PRODUCTS.map((p) => p.productId);
 // Item schema
 const itemSchema = new mongoose.Schema(
   {
-    productId: { type: String, required: true, trim: true },
+    productId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
     productName: {
       type: String,
@@ -40,7 +44,11 @@ const itemSchema = new mongoose.Schema(
       enum: ["Unprocessed", "Processed"],
     },
 
-    quantity: { type: Number, required: true, min: 1 },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
 
     unit: {
       type: String,
@@ -48,7 +56,16 @@ const itemSchema = new mongoose.Schema(
       enum: ["Kg", "g", "L", "ml", "Packets", "Pieces"],
     },
 
-    expirationDate: { type: Date },
+    status: {
+      type: String,
+      enum: ["pending", "received", "rejected"],
+      default: "pending",
+    },
+
+    expirationDate: {
+      type: Date,
+      required: true,
+    },
 
     StorageType: {
       type: String,
@@ -94,25 +111,28 @@ const donationFormSchema = new mongoose.Schema(
       enum: ["Pending", "Received"],
     },
   },
-  { timestamps: true, strict: "throw" }
+  {
+    timestamps: true,
+    strict: "throw",
+  }
 );
 
 // Validate and set productName
-donationFormSchema.pre("validate", function () {
+donationFormSchema.pre("validate", function (next) {
   if (!this.items || this.items.length === 0) {
-    throw new Error("Add at least one product item.");
+    return next(new Error("Add at least one product item."));
   }
 
   for (const item of this.items) {
     if (item.processingType === "Unprocessed") {
       if (!UNPROCESSED_IDS.includes(item.productId)) {
-        throw new Error("Invalid unprocessed productId selected.");
+        return next(new Error("Invalid unprocessed productId selected."));
       }
     }
 
     if (item.processingType === "Processed") {
       if (!PROCESSED_IDS.includes(item.productId)) {
-        throw new Error("Invalid processed productId selected.");
+        return next(new Error("Invalid processed productId selected."));
       }
     }
 
@@ -121,24 +141,33 @@ donationFormSchema.pre("validate", function () {
     );
 
     if (!matchedProduct) {
-      throw new Error(`Product name not found for productId: ${item.productId}`);
+      return next(
+        new Error(`Product name not found for productId: ${item.productId}`)
+      );
     }
 
     item.productName = matchedProduct.label;
   }
+
+  next();
 });
 
 // Auto-generate donationFormId
-donationFormSchema.pre("save", async function () {
-  if (this.donationFormId) return;
+donationFormSchema.pre("save", async function (next) {
+  try {
+    if (this.donationFormId) return next();
 
-  const counterDoc = await Counter.findOneAndUpdate(
-    { name: "donationForm" },
-    { $inc: { seq: 1 } },
-    { returnDocument: "after", upsert: true }
-  );
+    const counterDoc = await Counter.findOneAndUpdate(
+      { name: "donationForm" },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
 
-  this.donationFormId = `DF${String(counterDoc.seq).padStart(4, "0")}`;
+    this.donationFormId = `DF${String(counterDoc.seq).padStart(4, "0")}`;
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default mongoose.model("DonationForm", donationFormSchema);
