@@ -87,6 +87,33 @@ router.get("/", verifyToken, authorizeRoles("admin"), async (req, res) => {
     }
 });
 
+// get single user/employee by id (admin)
+router.get("/:id", verifyToken, authorizeRoles("admin"), async (req, res) => {
+    try {
+        const { id } = req.params;
+        let user = null;
+
+        // try find by ObjectId in users collection
+        try { user = await User.findById(id); } catch (e) { user = null }
+
+        // fallback to employee
+        if (!user) {
+            try { user = await Employee.findById(id); } catch (e) { user = null }
+        }
+
+        // final fallback: try username lookup
+        if (!user) {
+            user = await User.findOne({ username: id }) || await Employee.findOne({ username: id });
+        }
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        return res.status(200).json({ data: user });
+    } catch (err) {
+        return res.status(500).json({ message: 'Error fetching user' });
+    }
+});
+
 // update employee (admin)
 router.put("/:id", verifyToken, authorizeRoles("admin"), async (req, res) => {
     try {

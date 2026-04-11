@@ -5,8 +5,8 @@ import Display from "../models/displayModel.js";
 // GET /api/admin/stats
 export const getAdminStats = async (req, res) => {
   try {
-    // Count managers from employees collection
-    const managers = await Employee.countDocuments();
+  // Count managers from users collection (match your request to count from user DB)
+  const managers = await User.countDocuments({ role: 'manager' });
 
     // Count donors/ngos/drivers from users collection
     const donors = await User.countDocuments({ role: 'donor' });

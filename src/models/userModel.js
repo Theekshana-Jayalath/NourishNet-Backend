@@ -60,6 +60,35 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: false
   }
+  ,
+  // Driver-specific fields
+  vehicleType: {
+    type: String,
+    required: false
+  },
+  vehicleNumber: {
+    type: String,
+    required: false
+  },
+  licenseNumber: {
+    type: String,
+    required: false
+  },
+  // Donor-specific
+  donorType: {
+    type: String,
+    required: false
+  },
+  // NGO members list
+  members: {
+    type: [
+      {
+        name: { type: String, required: true },
+        contact: { type: String, required: true }
+      }
+    ],
+    required: false
+  }
 }, { timestamps: true });
 
 //  Auto-generate userId safely

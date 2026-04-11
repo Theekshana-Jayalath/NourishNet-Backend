@@ -89,7 +89,7 @@ export const updateApplication = async (req, res) => {
             const session = await mongoose.startSession();
             session.startTransaction();
             try {
-                // choose username: prefer applicant-supplied, else derive from email/name
+            // choose username: prefer applicant-supplied, else derive from email/name
                 const email = applicationExist.email || ''
                 const baseFromEmail = (email.split('@')[0] || applicationExist.name || 'user').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'user'
                 let username = (applicationExist.username || baseFromEmail).toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || baseFromEmail
@@ -112,6 +112,7 @@ export const updateApplication = async (req, res) => {
                     passwordHash = await bcrypt.hash(plainPassword, 10)
                 }
 
+                // Build user object using all applicant-provided fields where present
                 const user = new User({
                     name: applicationExist.name,
                     email: applicationExist.email,
@@ -120,27 +121,38 @@ export const updateApplication = async (req, res) => {
                     role: applicationExist.role,
                     status: 'ACTIVE',
 
-                    // ✅ Added missing profile fields
+                    // Common profile fields
                     nic: applicationExist.nic,
                     address: applicationExist.address,
                     city: applicationExist.city,
+                    contact: applicationExist.contact,
+
+                    // Organization / NGO fields
                     organizationName: applicationExist.organizationName,
                     registrationNumber: applicationExist.registrationNumber,
-                    contact: applicationExist.contact
+
+                    // Driver-specific
+                    vehicleType: applicationExist.vehicleType,
+                    vehicleNumber: applicationExist.vehicleNumber,
+                    licenseNumber: applicationExist.licenseNumber,
+
+                    // Donor-specific
+                    donorType: applicationExist.donorType || applicationExist.donationType,
+
+                    // members (for NGO) – copy if provided
+                    members: applicationExist.members,
                 })
 
+                // save new user within transaction
                 await user.save({ session })
 
-                const updatedApplication = await Application.findByIdAndUpdate(
-                    id,
-                    { ...req.body, status: 'approved' },
-                    { new: true, session }
-                )
+                // remove the application document now that the user has been created
+                const deletedApplication = await Application.findByIdAndDelete(id, { session });
 
                 await session.commitTransaction()
                 session.endSession()
 
-                const responsePayload = { updatedApplication }
+                const responsePayload = { deletedApplication }
                 if (plainPassword) responsePayload.userCredentials = { username, password: plainPassword }
                 return res.status(200).json(responsePayload)
             } catch (error) {
@@ -195,6 +207,7 @@ export const approveApplication = async (req, res) => {
             passwordHash = await bcrypt.hash(plain, 10);
         }
 
+        // Build payload including all applicant fields
         const userPayload = {
             name: application.name,
             email: application.email,
@@ -203,13 +216,20 @@ export const approveApplication = async (req, res) => {
             role: application.role,
             status: 'ACTIVE',
 
-            // ✅ Added missing profile fields
             nic: application.nic,
             address: application.address,
             city: application.city,
+            contact: application.contact,
+
             organizationName: application.organizationName,
             registrationNumber: application.registrationNumber,
-            contact: application.contact
+
+            vehicleType: application.vehicleType,
+            vehicleNumber: application.vehicleNumber,
+            licenseNumber: application.licenseNumber,
+
+            donorType: application.donorType || application.donationType,
+            members: application.members,
         };
 
         await User.create(userPayload);
