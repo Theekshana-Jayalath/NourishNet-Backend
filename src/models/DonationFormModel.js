@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import Counter from "./request/counter.model.js"; // ✅ ensure this path exists
+import Counter from "./request/counter.model.js";
 
-// Fixed dropdown lists (IDs only)
+// Fixed dropdown lists
 export const UNPROCESSED_PRODUCTS = [
   { productId: "UNP001", label: "Rice" },
   { productId: "UNP002", label: "Dhal" },
@@ -19,13 +19,24 @@ export const PROCESSED_PRODUCTS = [
   { productId: "PRO005", label: "Dhal Curry (Cooked)" },
 ];
 
+const ALL_PRODUCTS = [...UNPROCESSED_PRODUCTS, ...PROCESSED_PRODUCTS];
+
 const UNPROCESSED_IDS = UNPROCESSED_PRODUCTS.map((p) => p.productId);
 const PROCESSED_IDS = PROCESSED_PRODUCTS.map((p) => p.productId);
 
-// Item schema (one product line)
+// Item schema
 const itemSchema = new mongoose.Schema(
   {
-    productId: { type: String, required: true, trim: true },
+    productId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    productName: {
+      type: String,
+      trim: true,
+    },
 
     processingType: {
       type: String,
@@ -33,7 +44,11 @@ const itemSchema = new mongoose.Schema(
       enum: ["Unprocessed", "Processed"],
     },
 
-    quantity: { type: Number, required: true, min: 1 },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
 
     unit: {
       type: String,
@@ -41,7 +56,16 @@ const itemSchema = new mongoose.Schema(
       enum: ["Kg", "g", "L", "ml", "Packets", "Pieces"],
     },
 
-    expirationDate: { type: Date },
+    status: {
+      type: String,
+      enum: ["pending", "received", "rejected"],
+      default: "pending",
+    },
+
+    expirationDate: {
+      type: Date,
+      required: true,
+    },
 
     StorageType: {
       type: String,
@@ -50,7 +74,7 @@ const itemSchema = new mongoose.Schema(
     },
   },
   {
-    _id: true, // MongoDB auto item _id
+    _id: true,
     strict: "throw",
   }
 );
@@ -58,7 +82,6 @@ const itemSchema = new mongoose.Schema(
 // Donation Form schema
 const donationFormSchema = new mongoose.Schema(
   {
-    // Human-friendly form id (DF0001...)
     donationFormId: {
       type: String,
       unique: true,
@@ -66,7 +89,6 @@ const donationFormSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // The user who created it (donor userId)
     donorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -89,42 +111,63 @@ const donationFormSchema = new mongoose.Schema(
       enum: ["Pending", "Received"],
     },
   },
-  { timestamps: true, strict: "throw" }
+  {
+    timestamps: true,
+    strict: "throw",
+  }
 );
 
-// Validation: productId must match correct list based on processingType
-donationFormSchema.pre("validate", function () {
+// Validate and set productName
+donationFormSchema.pre("validate", function (next) {
   if (!this.items || this.items.length === 0) {
-    throw new Error("Add at least one product item.");
+    return next(new Error("Add at least one product item."));
   }
 
   for (const item of this.items) {
     if (item.processingType === "Unprocessed") {
       if (!UNPROCESSED_IDS.includes(item.productId)) {
-        throw new Error("Invalid unprocessed productId selected.");
+        return next(new Error("Invalid unprocessed productId selected."));
       }
     }
 
     if (item.processingType === "Processed") {
       if (!PROCESSED_IDS.includes(item.productId)) {
-        throw new Error("Invalid processed productId selected.");
+        return next(new Error("Invalid processed productId selected."));
       }
     }
+
+    const matchedProduct = ALL_PRODUCTS.find(
+      (p) => p.productId === item.productId
+    );
+
+    if (!matchedProduct) {
+      return next(
+        new Error(`Product name not found for productId: ${item.productId}`)
+      );
+    }
+
+    item.productName = matchedProduct.label;
   }
+
+  next();
 });
 
+// Auto-generate donationFormId
+donationFormSchema.pre("save", async function (next) {
+  try {
+    if (this.donationFormId) return next();
 
-// Auto-generate donationFormId (DF0001, DF0002...)
-donationFormSchema.pre("save", async function () {
-  if (this.donationFormId) return;
+    const counterDoc = await Counter.findOneAndUpdate(
+      { name: "donationForm" },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
 
-  const counterDoc = await Counter.findOneAndUpdate(
-    { name: "donationForm" },
-    { $inc: { seq: 1 } },
-    { returnDocument: "after", upsert: true }
-  );
-
-  this.donationFormId = `DF${String(counterDoc.seq).padStart(4, "0")}`;
+    this.donationFormId = `DF${String(counterDoc.seq).padStart(4, "0")}`;
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default mongoose.model("DonationForm", donationFormSchema);

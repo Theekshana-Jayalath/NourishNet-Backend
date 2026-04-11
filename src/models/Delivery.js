@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+//all allowed delivery statuses
 const DELIVERY_STATUS = [
   "CREATED",
   "ASSIGNED",
@@ -7,7 +8,7 @@ const DELIVERY_STATUS = [
   "IN_TRANSIT",
   "DELIVERED",
   "CANCELLED",
-];
+];     
 
 const deliverySchema = new mongoose.Schema(
   {

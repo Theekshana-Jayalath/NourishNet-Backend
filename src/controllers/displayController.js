@@ -4,16 +4,15 @@ import DonationForm from "../models/DonationFormModel.js";
 /*
 BUILD INVENTORY
 */
-export const buildInventory = async (req, res) => {
+export const buildInventory = async () => {
   try {
     const donations = await DonationForm.find({ Status: "Received" });
 
     const inventoryMap = {};
     const today = new Date();
 
-    donations.forEach(form => {
-      form.items.forEach(item => {
-
+    donations.forEach((form) => {
+      form.items.forEach((item) => {
         const key = item.productId + "_" + item.unit;
 
         if (!inventoryMap[key]) {
@@ -24,7 +23,7 @@ export const buildInventory = async (req, res) => {
             totalQuantity: 0,
             nearestExpireDate: item.expirationDate,
             daysLeft: null,
-            isExpiringSoon: false
+            isExpiringSoon: false,
           };
         }
 
@@ -43,13 +42,11 @@ export const buildInventory = async (req, res) => {
     });
 
     // calculate daysLeft & isExpiringSoon AFTER loop
-    Object.values(inventoryMap).forEach(item => {
+    Object.values(inventoryMap).forEach((item) => {
       if (item.nearestExpireDate) {
-        const diff =
-          new Date(item.nearestExpireDate) - today;
+        const diff = new Date(item.nearestExpireDate) - today;
 
         item.daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
-
         item.isExpiringSoon = item.daysLeft <= 3;
       }
     });
@@ -59,13 +56,12 @@ export const buildInventory = async (req, res) => {
     await Display.deleteMany();
     const savedItems = await Display.insertMany(inventoryArray);
 
-    res.status(200).json({
-      message: "Inventory built successfully",
-      data: savedItems
-    });
+    console.log("Inventory built successfully");
 
+    return savedItems;
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Inventory build error:", error.message);
+    throw error;
   }
 };
 

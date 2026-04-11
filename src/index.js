@@ -1,18 +1,20 @@
-// src/index.js
-
 import express from "express";
 import cors from "cors";
-import requestRoutes from "./routes/request/request.routes.js";  // Corrected path for request routes
+import requestRoutes from "./routes/request/request.routes.js";
 
 const app = express();
 
-// Enable CORS for all origins in development (adjust in production)
-app.use(cors());
+//  CORS (IMPORTANT)
+app.use(cors({
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  credentials: true,
+}));
 
-// Middleware to parse JSON
+//  JSON parser
 app.use(express.json());
 
-// Register the routes
-app.use("/api/requests", requestRoutes);  // Routes for requests
+//  Your request routes
+app.use("/api/requests", requestRoutes);
 
-export default app;  // Export 'app' so it can be used in server.js
+export default app;
