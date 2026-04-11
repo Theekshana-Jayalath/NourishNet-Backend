@@ -13,10 +13,11 @@ export const getAdminStats = async (req, res) => {
     const ngos = await User.countDocuments({ role: 'ngo' });
     const drivers = await User.countDocuments({ role: 'driver' });
 
-    // Inventory items (published)
-    const inventory = await Display.countDocuments({ published: true });
+  // Log counts for debugging
+  console.log('[adminController] getAdminStats ->', { managers, donors, ngos, drivers });
 
-    res.status(200).json({ managers, donors, ngos, drivers, inventory });
+  // Return only the requested shape
+  res.status(200).json({ managers, donors, drivers, ngos });
   } catch (err) {
     console.error('[adminController] getAdminStats error', err.message)
     res.status(500).json({ message: 'Error fetching admin stats' });
