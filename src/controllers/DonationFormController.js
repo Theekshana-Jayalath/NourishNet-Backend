@@ -112,8 +112,8 @@ export const update = async (req, res) => {
     */
 
     if (updatedData.Status === "Received") {
-  await buildInventory({}, {}); 
-}
+        await buildInventory();
+    }
 
 
     return res.status(200).json({
@@ -153,7 +153,7 @@ export const deleteDonationForm = async (req, res) => {
 // Call like: GET /api/donationForms/my-history?donorId=XXXXXXXX
 export const getMyDonationHistory = async (req, res) => {
   try {
-    const { donorId } = req.query;
+    const donorId = req.user.id;
 
     if (!donorId) {
       return res.status(400).json({ message: "donorId query param is required" });
