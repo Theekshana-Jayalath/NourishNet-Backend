@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Counter from "./request/counter.model.js"; // ✅ ensure this path exists
+import Counter from "./request/counter.model.js"; 
 
 // Fixed dropdown lists
 export const UNPROCESSED_PRODUCTS = [
