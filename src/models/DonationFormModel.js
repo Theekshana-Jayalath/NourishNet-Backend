@@ -20,7 +20,6 @@ export const PROCESSED_PRODUCTS = [
 ];
 
 const ALL_PRODUCTS = [...UNPROCESSED_PRODUCTS, ...PROCESSED_PRODUCTS];
-
 const UNPROCESSED_IDS = UNPROCESSED_PRODUCTS.map((p) => p.productId);
 const PROCESSED_IDS = PROCESSED_PRODUCTS.map((p) => p.productId);
 
@@ -32,41 +31,34 @@ const itemSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
     productName: {
       type: String,
       trim: true,
     },
-
     processingType: {
       type: String,
       required: true,
       enum: ["Unprocessed", "Processed"],
     },
-
     quantity: {
       type: Number,
       required: true,
       min: 1,
     },
-
     unit: {
       type: String,
       required: true,
       enum: ["Kg", "g", "L", "ml", "Packets", "Pieces"],
     },
-
     status: {
       type: String,
       enum: ["pending", "received", "rejected"],
       default: "pending",
     },
-
     expirationDate: {
       type: Date,
       required: true,
     },
-
     StorageType: {
       type: String,
       required: true,
@@ -88,14 +80,12 @@ const donationFormSchema = new mongoose.Schema(
       index: true,
       trim: true,
     },
-
     donorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
       index: true,
     },
-
     items: {
       type: [itemSchema],
       required: true,
@@ -104,7 +94,6 @@ const donationFormSchema = new mongoose.Schema(
         message: "At least one product item is required.",
       },
     },
-
     Status: {
       type: String,
       default: "Pending",
@@ -118,21 +107,29 @@ const donationFormSchema = new mongoose.Schema(
 );
 
 // Validate and set productName
-donationFormSchema.pre("validate", function (next) {
+donationFormSchema.pre("validate", function () {
   if (!this.items || this.items.length === 0) {
-    return next(new Error("Add at least one product item."));
+    throw new Error("Add at least one product item.");
   }
 
   for (const item of this.items) {
     if (item.processingType === "Unprocessed") {
       if (!UNPROCESSED_IDS.includes(item.productId)) {
-        return next(new Error("Invalid unprocessed productId selected."));
+        throw new Error("Invalid unprocessed productId selected.");
+      }
+
+      if (!["Kg", "g", "L", "ml"].includes(item.unit)) {
+        throw new Error("Unprocessed items can only use Kg, g, L, or ml.");
       }
     }
 
     if (item.processingType === "Processed") {
       if (!PROCESSED_IDS.includes(item.productId)) {
-        return next(new Error("Invalid processed productId selected."));
+        throw new Error("Invalid processed productId selected.");
+      }
+
+      if (!["Packets", "Pieces"].includes(item.unit)) {
+        throw new Error("Processed items can only use Packets or Pieces.");
       }
     }
 
@@ -141,33 +138,24 @@ donationFormSchema.pre("validate", function (next) {
     );
 
     if (!matchedProduct) {
-      return next(
-        new Error(`Product name not found for productId: ${item.productId}`)
-      );
+      throw new Error(`Product name not found for productId: ${item.productId}`);
     }
 
     item.productName = matchedProduct.label;
   }
-
-  next();
 });
 
 // Auto-generate donationFormId
-donationFormSchema.pre("save", async function (next) {
-  try {
-    if (this.donationFormId) return next();
+donationFormSchema.pre("save", async function () {
+  if (this.donationFormId) return;
 
-    const counterDoc = await Counter.findOneAndUpdate(
-      { name: "donationForm" },
-      { $inc: { seq: 1 } },
-      { new: true, upsert: true }
-    );
+  const counterDoc = await Counter.findOneAndUpdate(
+    { name: "donationForm" },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
 
-    this.donationFormId = `DF${String(counterDoc.seq).padStart(4, "0")}`;
-    next();
-  } catch (error) {
-    next(error);
-  }
+  this.donationFormId = `DF${String(counterDoc.seq).padStart(4, "0")}`;
 });
 
 export default mongoose.model("DonationForm", donationFormSchema);
