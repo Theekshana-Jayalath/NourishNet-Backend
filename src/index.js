@@ -4,17 +4,22 @@ import requestRoutes from "./routes/request/request.routes.js";
 
 const app = express();
 
-//  CORS (IMPORTANT)
-app.use(cors({
-  origin: "http://localhost:5173",
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-  credentials: true,
-}));
+// CORS (IMPORTANT)
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://nourishnet-zeta.vercel.app",
+    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    credentials: true,
+  })
+);
 
-//  JSON parser
+// JSON parser
 app.use(express.json());
 
-//  Your request routes
+// Your request routes
 app.use("/api/requests", requestRoutes);
 
 export default app;
