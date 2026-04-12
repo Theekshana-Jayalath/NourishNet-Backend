@@ -17,6 +17,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://nourishnet-zeta.vercel.app",
+      "https://nourishnet-backend-production.up.railway.app"
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
