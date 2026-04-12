@@ -7,11 +7,12 @@ import {
   updateRequest,
   deleteRequest
 } from "../../controllers/request/request.controller.js";
+import verifyToken from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // CREATE
-router.post("/", createRequest);
+router.post("/", verifyToken, createRequest);
 
 // READ ALL (filters/pagination)
 router.get("/", getAllRequests);
