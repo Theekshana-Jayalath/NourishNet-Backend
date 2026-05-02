@@ -158,4 +158,6 @@ donationFormSchema.pre("save", async function () {
   this.donationFormId = `DF${String(counterDoc.seq).padStart(4, "0")}`;
 });
 
-export default mongoose.model("DonationForm", donationFormSchema);
+const DonationFormModel = mongoose.model("DonationForm", donationFormSchema);
+
+export default DonationFormModel;

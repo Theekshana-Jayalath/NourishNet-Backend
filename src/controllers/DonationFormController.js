@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import DonationFormModel from "../models/DonationFormModel.js";
 import { buildInventory } from "./displayController.js";
+import { createInventoryFromDonation } from "./inventoryController.js";
 
 // CREATE
 export const create = async (req, res) => {
@@ -107,9 +108,40 @@ export const update = async (req, res) => {
       runValidators: true,
     });
 
-    // Rebuild inventory only when status changes to Received
     if (oldStatus !== "Received" && updatedData.Status === "Received") {
-      await buildInventory();
+      try {
+        // Ensure individual items are marked as received so inventory logic picks them up
+        const itemsUpdated = updatedData.items.map((it) => {
+          if (!it.status || it.status !== "received") {
+            // set to 'received' to reflect donation-level acceptance
+            it.status = "received";
+          }
+          return it;
+        });
+
+        const finalDonation = await DonationFormModel.findByIdAndUpdate(
+          id,
+          { items: itemsUpdated },
+          { new: true, runValidators: true }
+        );
+
+        try {
+          await buildInventory();
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("buildInventory error:", err);
+        }
+
+        try {
+          await createInventoryFromDonation(finalDonation);
+        } catch (invErr) {
+          // eslint-disable-next-line no-console
+          console.error("createInventoryFromDonation error:", invErr);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error("Error marking items as received:", e);
+      }
     }
 
     return res.status(200).json({

@@ -127,12 +127,10 @@ export const approveApplication = async (req, res) => {
 
     await newUser.save()
 
-    application.status = 'approved'
-    application.approvedBy = req.user.id
-    application.approvedAt = new Date()
-    await application.save()
+    // Delete the application after successful user creation
+    await Application.findByIdAndDelete(req.params.id)
 
-    res.json({ message: 'Application approved successfully', user: newUser })
+    res.json({ message: 'Application approved successfully and removed from applications', user: newUser })
   } catch (err) {
     console.error('Approve error:', err)
     res.status(500).json({ message: 'Server error' })

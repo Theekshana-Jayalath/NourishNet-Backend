@@ -2,6 +2,13 @@ import mongoose from "mongoose";
 
 const driverSchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      unique: true,
+      sparse: true,
+    },
     name: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true, unique: true },
     vehicleType: { type: String, default: "Bike", trim: true },
