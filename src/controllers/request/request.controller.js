@@ -1,4 +1,5 @@
 import Request from "../../models/request/request.model.js";
+import Inventory from "../../models/Inventory.js";
 
 // CREATE: POST /api/requests
 export const createRequest = async (req, res) => {
@@ -87,6 +88,40 @@ export const updateRequest = async (req, res) => {
     );
 
     if (!updated) return res.status(404).json({ message: "Request not found" });
+
+    if (req.body.status === "FULFILLED") {
+      try {
+        for (const requestedItem of updated.requestedItems) {
+          const itemsToReduce = requestedItem.quantity;
+          let remaining = itemsToReduce;
+
+          const inventoryItems = await Inventory.find({
+            itemName: requestedItem.itemName
+          }).sort({ createdAt: 1 });
+
+          for (const invItem of inventoryItems) {
+            if (remaining <= 0) break;
+
+            if (invItem.quantity >= remaining) {
+              invItem.quantity -= remaining;
+              remaining = 0;
+            } else {
+              remaining -= invItem.quantity;
+              invItem.quantity = 0;
+            }
+
+            if (invItem.quantity > 0) {
+              await invItem.save();
+            } else {
+              await Inventory.findByIdAndDelete(invItem._id);
+            }
+          }
+        }
+      } catch (invErr) {
+        // eslint-disable-next-line no-console
+        console.error("Inventory reduction error:", invErr);
+      }
+    }
 
     return res.json({
       message: "Request updated successfully",

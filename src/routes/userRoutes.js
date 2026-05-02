@@ -55,16 +55,21 @@ router.post("/", verifyToken, authorizeRoles("admin"), async (req, res) => {
     }
 });
 
-// helper: list users (admin)
-router.get("/", verifyToken, authorizeRoles("admin"), async (req, res) => {
+// helper: list users
+// Admins can list all users. Managers may list users for their own department in some cases.
+router.get("/", verifyToken, async (req, res) => {
     try {
-        // Respect role query parameter: return employees for manager, users filtered for other roles
         const { role } = req.query
+        const requesterRole = (req.user?.role || '').toString().toLowerCase()
+
+        // If a role filter is provided, enforce permissions per requested role
         if (role) {
             const r = role.toString().toLowerCase()
+
+            // Managers asking for manager list: only admins may request all managers
             if (r === 'manager') {
+                if (requesterRole !== 'admin') return res.status(403).json({ message: 'Access denied' });
                 const emps = await Employee.find().sort({ createdAt: -1 });
-                // include managerType for compatibility with frontend
                 const mapped = emps.map(e => {
                     const obj = e.toObject()
                     obj.managerType = e.department ? (e.department.toUpperCase() + '_MANAGER') : null
@@ -72,12 +77,32 @@ router.get("/", verifyToken, authorizeRoles("admin"), async (req, res) => {
                 })
                 return res.status(200).json(mapped);
             }
-            // return users filtered by role
-            const filtered = await User.find({ role: r }).sort({ createdAt: -1 });
-            return res.status(200).json(filtered);
+
+            // Allow admins to fetch any role
+            if (requesterRole === 'admin') {
+                const filtered = await User.find({ role: r }).sort({ createdAt: -1 });
+                return res.status(200).json(filtered);
+            }
+
+            // Allow manager of a specific department to fetch users of that department (e.g., donor managers -> donors)
+            if (requesterRole === 'manager') {
+                const dept = (req.user?.department || '').toString().toLowerCase();
+                if (r === 'donor' && dept === 'donor') {
+                    const filtered = await User.find({ role: r }).sort({ createdAt: -1 });
+                    return res.status(200).json(filtered);
+                }
+
+                // NGO manager has its own endpoint; deny other role queries
+                return res.status(403).json({ message: 'Access denied' });
+            }
+
+            // other roles are not permitted to list users
+            return res.status(403).json({ message: 'Access denied' });
         }
 
-        // otherwise return combined users and employees
+        // No role filter: only admins may fetch combined lists
+        if (requesterRole !== 'admin') return res.status(403).json({ message: 'Access denied' });
+
         const users = await User.find().sort({ createdAt: -1 });
         const employees = await Employee.find().sort({ createdAt: -1 });
         const combined = [...users, ...employees];
@@ -87,10 +112,14 @@ router.get("/", verifyToken, authorizeRoles("admin"), async (req, res) => {
     }
 });
 
-// get single user/employee by id (admin)
-router.get("/:id", verifyToken, authorizeRoles("admin"), async (req, res) => {
+// get single user/employee by id
+// Accessible by: admin (any), manager of department 'donor' (but only for donor users), and a user for their own record
+router.get("/:id", verifyToken, async (req, res) => {
     try {
         const { id } = req.params;
+        const requester = req.user || {};
+        const requesterRole = (requester.role || '').toString().toLowerCase();
+
         let user = null;
 
         // try find by ObjectId in users collection
@@ -108,7 +137,26 @@ router.get("/:id", verifyToken, authorizeRoles("admin"), async (req, res) => {
 
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        return res.status(200).json({ data: user });
+        // Allow admins
+        if (requesterRole === 'admin') return res.status(200).json({ data: user });
+
+        // Allow the user to fetch their own record
+        const requesterId = requester.id || (requester._id ? requester._id.toString() : null);
+        const targetId = user._id ? user._id.toString() : (user.id ? user.id.toString() : null);
+        if (requesterId && targetId && requesterId.toString() === targetId.toString()) {
+            return res.status(200).json({ data: user });
+        }
+
+        // Allow manager of donor department to fetch donor users only
+        if (requesterRole === 'manager') {
+            const dept = (requester.department || '').toString().toLowerCase();
+            const targetRole = (user.role || '').toString().toLowerCase();
+            if (dept === 'donor' && targetRole === 'donor') {
+                return res.status(200).json({ data: user });
+            }
+        }
+
+        return res.status(403).json({ message: 'Access denied' });
     } catch (err) {
         return res.status(500).json({ message: 'Error fetching user' });
     }
