@@ -11,14 +11,32 @@ import adminRoutes from "./routes/adminRoutes.js";
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://nourishnet-zeta.vercel.app",
+  "https://nourishnet-backend-production.up.railway.app",
+  "https://nourishnetzh.vercel.app"
+];
+
+if (process.env.ALLOWED_ORIGINS) {
+  const envOrigins = process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim());
+  allowedOrigins.push(...envOrigins);
+}
+
 // CORS (IMPORTANT)
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://nourishnet-zeta.vercel.app",
-      "https://nourishnet-backend-production.up.railway.app"
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, postman)
+      if (!origin) return callback(null, true);
+      
+      const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   })
