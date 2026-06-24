@@ -1,4 +1,5 @@
 import Driver from "../models/Driver.js";
+import User from "../models/userModel.js";
 
 // CREATE — POST /api/drivers
 export const createDriver = async (req, res) => {
@@ -34,19 +35,67 @@ export const createDriver = async (req, res) => {
 export const getAllDrivers = async (req, res) => {
   try {
     const { q } = req.query;
-    const filter = {};
+    const userFilter = { role: "driver", status: "ACTIVE" };
 
     if (q) {
-      filter.$or = [
+      userFilter.$or = [
         { name: { $regex: q, $options: "i" } },
-        { phone: { $regex: q, $options: "i" } },
+        { username: { $regex: q, $options: "i" } },
+        { contact: { $regex: q, $options: "i" } },
         { vehicleType: { $regex: q, $options: "i" } },
-        { licenseNumber: { $regex: q, $options: "i" } },
-        { plateNumber: { $regex: q, $options: "i" } },
+        { vehicleNumber: { $regex: q, $options: "i" } },
       ];
     }
 
-    const drivers = await Driver.find(filter).sort({ createdAt: -1 });
+    const users = await User.find(userFilter).sort({ createdAt: -1 });
+
+    const drivers = await Promise.all(
+      users.map(async (u) => {
+        // Keep delivery assignment compatible by always returning a Driver document ID.
+        let driver = await Driver.findOne({ userId: u._id });
+
+        if (!driver && u.contact) {
+          // Backward compatibility with older Driver documents created before userId link existed.
+          driver = await Driver.findOne({ phone: u.contact });
+          if (driver && !driver.userId) {
+            driver.userId = u._id;
+            await driver.save();
+          }
+        }
+
+        if (!driver) {
+          let safePhone = u.contact || `${u.username || `driver-${u._id}`}`;
+          const samePhoneDriver = await Driver.findOne({ phone: safePhone });
+          if (samePhoneDriver && String(samePhoneDriver.userId || "") !== String(u._id)) {
+            safePhone = `${u._id}`;
+          }
+
+          driver = await Driver.create({
+            userId: u._id,
+            name: u.name || u.username || "Driver",
+            phone: safePhone,
+            vehicleType: u.vehicleType || "Bike",
+            plateNumber: u.vehicleNumber || "",
+            isAvailable: true,
+          });
+        }
+
+        return {
+          _id: driver._id,
+          userId: u._id,
+          name: u.name || u.username || driver.name,
+          phone: u.contact || driver.phone,
+          vehicleType: u.vehicleType || driver.vehicleType,
+          plateNumber: u.vehicleNumber || driver.plateNumber,
+          licenseNumber: u.licenseNumber || "",
+          status: u.status,
+          isAvailable: driver.isAvailable !== false,
+          createdAt: driver.createdAt,
+          updatedAt: driver.updatedAt,
+        };
+      })
+    );
+
     res.status(200).json(drivers);
   } catch (err) {
     console.error("[driver.controller] getAll error:", err.message);

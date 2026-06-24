@@ -1,5 +1,7 @@
 import Delivery from "../models/Delivery.js";
 import Driver from "../models/Driver.js";
+import User from "../models/userModel.js";
+import Employee from "../models/employeeModel.js";
 import { notify } from "../utils/notification.util.js";
 
 function pushHistory(delivery, status, message) {
@@ -8,6 +10,44 @@ function pushHistory(delivery, status, message) {
 
 async function autoPickAvailableDriver() {
   return await Driver.findOne({ isAvailable: true }).sort({ updatedAt: 1 });
+}
+
+async function findDriverByIdOrUserId(driverId) {
+  let driver = await Driver.findById(driverId);
+  if (driver) return driver;
+  return Driver.findOne({ userId: driverId });
+}
+
+async function ensureDriverForUserId(driverId) {
+  let driver = await findDriverByIdOrUserId(driverId);
+  if (driver) return driver;
+
+  let account = await User.findById(driverId);
+  if (!account) {
+    account = await Employee.findById(driverId);
+  }
+
+  const isDriver =
+    account &&
+    ((account.role || "").toString().toLowerCase() === "driver" ||
+      (account.department || "").toString().toLowerCase() === "driver");
+
+  if (!isDriver) return null;
+
+  let safePhone = account.contact || account.username || `driver-${account._id}`;
+  const samePhoneDriver = await Driver.findOne({ phone: safePhone });
+  if (samePhoneDriver && String(samePhoneDriver.userId || "") !== String(account._id)) {
+    safePhone = `${account._id}`;
+  }
+
+  return Driver.create({
+    userId: account._id,
+    name: account.name || account.username || "Driver",
+    phone: safePhone,
+    vehicleType: account.vehicleType || "Bike",
+    plateNumber: account.vehicleNumber || "",
+    isAvailable: true,
+  });
 }
 
 async function createDelivery(payload, { autoAssign = false } = {}) {
@@ -41,7 +81,10 @@ async function listDeliveries({ page = 1, limit = 10, status, q, driverId } = {}
   const filter = {};
 
   if (status) filter.status = status;
-  if (driverId) filter.driverId = driverId;
+  if (driverId) {
+    const resolved = await findDriverByIdOrUserId(driverId);
+    filter.driverId = resolved ? resolved._id : driverId;
+  }
 
   if (q) {
     filter.$or = [
@@ -85,7 +128,7 @@ async function assignDriver(deliveryId, driverId) {
   const delivery = await Delivery.findById(deliveryId);
   if (!delivery) throw new Error("Delivery not found");
 
-  const newDriver = await Driver.findById(driverId);
+  const newDriver = await ensureDriverForUserId(driverId);
   if (!newDriver) throw new Error("Driver not found");
   if (!newDriver.isAvailable) throw new Error("Driver is not available");
 

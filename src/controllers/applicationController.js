@@ -192,6 +192,7 @@ export const approveApplication = async (req, res) => {
     try {
         const id = req.params.id;
         const application = await Application.findById(id);
+        console.log(application)
         if (!application) return res.status(404).json({ message: 'Application not found' });
 
         // build username (prefer supplied)
